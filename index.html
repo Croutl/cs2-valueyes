@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 ValuEyes</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#f0f4f8;color:#2c3e50;padding:20px}
+        .container{max-width:900px;margin:0 auto}
+        h1{text-align:center;font-size:1.8em;margin-bottom:2px;color:#2c3e50}
+        .subtitle{text-align:center;color:#7799CC;margin-bottom:18px;font-size:.9em}
+        .tabs{display:flex;gap:3px;margin-bottom:16px;background:#fff;border-radius:10px;padding:4px;box-shadow:0 1px 4px rgba(119,153,204,.12)}
+        .tab{flex:1;padding:9px 6px;text-align:center;cursor:pointer;border-radius:8px;font-size:13px;color:#7799CC;border:none;background:transparent;font-weight:bold;transition:all .2s}
+        .tab:hover{background:#e8eff7}.tab.active{color:#fff;background:#7799CC}
+        .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:14px;border:1px solid #e2eaf3;box-shadow:0 2px 8px rgba(119,153,204,.08)}
+        .tab-content{display:none}.tab-content.active{display:block}
+        h2{margin-bottom:12px;font-size:1.15em;color:#2c3e50}
+        .input-group{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+        input,select{flex:1;padding:9px 12px;border:1px solid #d0dceb;border-radius:8px;background:#f8fafc;color:#2c3e50;font-size:14px;min-width:140px}
+        input:focus,select:focus{outline:none;border-color:#7799CC;box-shadow:0 0 0 3px rgba(119,153,204,.15)}
+        button{padding:9px 18px;background:#7799CC;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;white-space:nowrap}
+        button:hover{background:#5a7fb3}
+        .result{background:#f8fafc;border-radius:8px;padding:14px;margin-top:10px;line-height:2;font-size:14px;overflow-x:auto;border:1px solid #e2eaf3}
+        .label{color:#7799CC;font-weight:bold}
+        .quick-btn{padding:4px 10px;background:#f0f4f8;border-radius:14px;cursor:pointer;font-size:12px;border:1px solid #d0dceb;color:#7799CC;display:inline-block;margin:2px}
+        .quick-btn:hover{background:#e8eff7;border-color:#7799CC}
+        .error{color:#e74c3c;padding:8px;background:#fdf0ef;border-radius:8px;margin-top:8px;font-size:13px;border:1px solid #f5c6cb}
+        .search-item{padding:7px 10px;cursor:pointer;border-radius:6px;border-bottom:1px solid #e2eaf3;font-size:13px;color:#2c3e50}
+        .search-item:hover{background:#e8eff7}
+        .loading{text-align:center;padding:20px;color:#a0b4cc}
+        .valuation-box{background:linear-gradient(135deg,#f0f7ff,#f8fafc);border:1px solid #c5d6eb;border-radius:10px;padding:14px;margin-top:12px}
+        .valuation-price{font-size:1.5em;color:#2c3e50;font-weight:bold}
+        .formula-box{background:#f0f4f8;border-radius:8px;padding:8px;margin-top:8px;font-family:Consolas,monospace;font-size:.85em;color:#5a7fb3}
+        hr{border-color:#e2eaf3;margin:12px 0}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th,td{padding:8px 6px;text-align:left;border-bottom:1px solid #e2eaf3}
+        th{color:#7799CC;font-size:11px;white-space:nowrap;cursor:pointer;user-select:none}
+        th:hover{background:#e8eff7}th .sort-arrow{color:#a0b4cc;font-size:10px;margin-left:3px}
+        tr:hover{background:#f0f6fb}
+        .tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:bold}
+        .tag-gold{background:#fef3c7;color:#d97706}.tag-blue{background:#dbeafe;color:#3b82f6}
+        .tag-purple{background:#ede9fe;color:#8b5cf6}.tag-pink{background:#fce7f3;color:#ec4899}
+        .tag-red{background:#fee2e2;color:#ef4444}
+        .stat-box{background:#f8fafc;border:1px solid #e2eaf3;border-radius:8px;padding:10px;flex:1;min-width:100px;text-align:center}
+        .stat-value{font-size:1.3em;font-weight:bold;color:#2c3e50}
+        .stat-label{font-size:10px;color:#7799CC;margin-top:2px}
+        .flex-row{display:flex;gap:12px;flex-wrap:wrap}
+        .chart-area{background:#f8fafc;border:1px solid #e2eaf3;border-radius:8px;padding:10px;margin:8px 0;overflow-x:auto}
+        .chart-bars{display:flex;align-items:flex-end;gap:2px;height:100px}
+        .back-btn{cursor:pointer;color:#7799CC;font-size:13px;margin-bottom:8px;display:inline-block}
+        .back-btn:hover{text-decoration:underline}
+        .roi-row{cursor:pointer}.roi-row:hover{background:#e8eff7!important}
+        .mini-search{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+        .mini-search input{flex:1;min-width:120px;padding:7px 10px;border:1px solid #d0dceb;border-radius:6px;background:#f8fafc;font-size:13px}
+        .mini-search input:focus{outline:none;border-color:#7799CC}
+        .fee-select{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .fee-select label{font-size:13px;color:#7799CC}.fee-select select{width:80px;flex:none}
+        .score-bar{height:10px;border-radius:5px;background:#e2eaf3;margin:8px 0;overflow:hidden}
+        .score-fill{height:100%;border-radius:5px;transition:width .5s}
+        .signal-item{padding:6px 10px;margin:4px 0;border-radius:6px;font-size:13px;line-height:1.5}
+        .signal-green{background:#f0fdf4;border:1px solid #bbf7d0}
+        .signal-yellow{background:#fefce8;border:1px solid #fde68a}
+        .signal-red{background:#fef2f2;border:1px solid #fecaca}
+        .signal-gray{background:#f8fafc;border:1px solid #e2eaf3}
+        @media(max-width:600px){.tab{font-size:11px;padding:7px 3px}}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>👁️ CS2 ValuEyes</h1>
+    <p class="subtitle">不只是价格，帮你判断值不值 · AI估值 · 挂刀计算 · 走势分析</p>
+
+    <div id="marketBar" style="background:#fff;border-radius:8px;padding:6px 12px;margin-bottom:10px;border:1px solid #e2eaf3;font-size:12px;color:#7799CC;display:flex;gap:14px;flex-wrap:wrap;align-items:center;min-height:28px;box-shadow:0 1px 4px rgba(119,153,204,.06);">
+        <span id="marketInfo" style="color:#a0b4cc;">⏳ 加载大盘指数...</span>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('price',this)">💰 价格查询</button>
+        <button class="tab" onclick="switchTab('case',this);loadRoiList()">📦 开箱回报率</button>
+        <button class="tab" onclick="switchTab('trend',this)">📈 价格走势</button>
+        <button class="tab" onclick="switchTab('arb',this)">🔄 挂刀行情</button>
+        <button class="tab" onclick="switchTab('ai',this)">🤖 AI 分析</button>
+    </div>
+
+    <!-- TAB 1: 价格 -->
+    <div class="tab-content active" id="tab-price">
+        <div class="card">
+            <h2>🔍 搜索饰品</h2>
+            <input type="text" id="searchInput" placeholder="输入中文名称" autocomplete="off">
+            <div id="searchResults"></div>
+        </div>
+        <div class="card">
+            <h2>💰 实时价格 & 智能估值</h2>
+            <div class="input-group">
+                <input type="number" id="skinId" value="21632">
+                <button onclick="querySkin()">查询</button>
+            </div>
+            <div class="quick-btn" onclick="selectSkin(21632)">AK-47 新红浪潮</div>
+            <div class="quick-btn" onclick="selectSkin(243)">AWP 巨龙传说</div>
+            <div class="quick-btn" onclick="selectSkin(19558)">格洛克 崩络克</div>
+            <div class="error" id="error"></div>
+            <div class="result" id="result"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: 开箱回报率 -->
+    <div class="tab-content" id="tab-case">
+        <div class="card" id="roiListCard">
+            <h2>📊 武器箱开箱回报率排行</h2>
+            <p style="color:#7799CC;font-size:13px;margin-bottom:10px;">点击列头排序 · 点击行查看内含物</p>
+            <div class="error" id="roiError"></div>
+            <div class="result" id="roiResult" style="padding:0;"></div>
+        </div>
+        <div class="card" id="roiDetailCard" style="display:none;">
+            <div class="back-btn" onclick="showRoiList()">← 返回列表</div>
+            <div class="error" id="detailError"></div>
+            <div class="result" id="detailResult"></div>
+        </div>
+    </div>
+
+    <!-- TAB 3: 走势 -->
+    <div class="tab-content" id="tab-trend">
+        <div class="card">
+            <h2>📈 价格走势（Buff近90天）</h2>
+            <div class="mini-search">
+                <input type="text" id="trendSearch" placeholder="输入中文名称搜索" autocomplete="off">
+                <div id="trendSearchResults" style="width:100%;"></div>
+            </div>
+            <div class="input-group">
+                <input type="number" id="trendId" value="21632">
+                <button onclick="queryTrend()">查看走势</button>
+            </div>
+            <div class="quick-btn" onclick="selectTrend(21632)">AK-47 新红浪潮</div>
+            <div class="quick-btn" onclick="selectTrend(243)">AWP 巨龙传说</div>
+            <div class="quick-btn" onclick="selectTrend(19653)">AK-47 传承</div>
+            <div class="error" id="trendError"></div>
+            <div class="result" id="trendResult"></div>
+        </div>
+    </div>
+
+    <!-- TAB 4: 挂刀 -->
+    <div class="tab-content" id="tab-arb">
+        <div class="card">
+            <h2>🔄 挂刀行情</h2>
+            <p style="color:#7799CC;font-size:13px;margin-bottom:10px;">
+                挂刀比例 = 进货价 ÷ 实际到账 · 比例越低越划算<br>
+                实际到账 = Steam求购价 - 手续费(最低$0.01≈¥0.14)
+            </p>
+            <div class="input-group">
+                <select id="arbPlat"><option value="BUFF-YYYP">BUFF+悠悠</option><option value="BUFF">仅BUFF</option><option value="YYYP">仅悠悠</option></select>
+                <select id="arbSort"><option value="1">丢求购(推荐)</option><option value="0">挂底价</option></select>
+                <div class="fee-select"><label>手续费率:</label><select id="arbFee"><option value="0.05">5%</option><option value="0.10">10%</option></select></div>
+                <button onclick="queryArb()">查询</button>
+            </div>
+            <div style="font-size:12px;color:#7799CC;margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <span>价格:</span>
+                <input type="number" id="arbMin" value="1" style="width:60px;display:inline-block;">
+                <span>~</span>
+                <input type="number" id="arbMax" value="5000" style="width:60px;display:inline-block;">
+                <span>最低日成交量:</span>
+                <input type="number" id="arbTv" value="10" style="width:60px;display:inline-block;">
+            </div>
+            <div class="error" id="arbError"></div>
+            <div class="result" id="arbResult"></div>
+        </div>
+    </div>
+
+    <!-- TAB 5: AI 分析 -->
+    <div class="tab-content" id="tab-ai">
+        <div class="card">
+            <h2>🤖 AI 投资分析</h2>
+            <p style="color:#7799CC;font-size:13px;margin-bottom:10px;">
+                基于大盘指数 + 个品走势 + 流动性的多维度评分模型 |
+                <span style="font-size:11px;">得分≥70推荐 · 50-69观望 · 30-49谨慎 · <30不推荐</span>
+            </p>
+            <div class="mini-search">
+                <input type="text" id="aiSearch" placeholder="输入中文名称搜索" autocomplete="off">
+                <div id="aiSearchResults" style="width:100%;"></div>
+            </div>
+            <div class="input-group">
+                <input type="number" id="aiSkinId" value="21632">
+                <button onclick="queryAI()">AI 分析</button>
+            </div>
+            <div class="quick-btn" onclick="selectAI(21632)">AK-47 新红浪潮</div>
+            <div class="quick-btn" onclick="selectAI(243)">AWP 巨龙传说</div>
+            <div class="quick-btn" onclick="selectAI(19653)">AK-47 传承</div>
+            <div class="quick-btn" onclick="selectAI(19558)">格洛克 崩络克</div>
+            <div class="error" id="aiError"></div>
+            <div class="result" id="aiResult"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTab(id,btn){
+    document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+    document.getElementById('tab-'+id).classList.add('active');
+    btn.classList.add('active');
+}
+async function fetchJSON(url, timeout=15000){
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(), timeout);
+    try{
+        const r=await fetch(url, {signal:ctrl.signal});
+        clearTimeout(timer);
+        if(!r.ok) return {_error:`HTTP ${r.status}`};
+        return await r.json();
+    }catch(e){
+        clearTimeout(timer);
+        if(e.name==='AbortError') return {_error:'请求超时，请稍后重试'};
+        return {_error:'网络异常，请检查连接'};
+    }
+}
+
+let st=null;
+function createSearch(inputId, resultId, onClick){
+    document.getElementById(inputId).addEventListener('input',()=>{
+        const q=document.getElementById(inputId).value.trim();
+        const c=document.getElementById(resultId);
+        if(q.length<1){ c.innerHTML=''; return; }
+        clearTimeout(st);
+        st=setTimeout(async ()=>{
+            const d=await fetchJSON('/search?q='+encodeURIComponent(q));
+            if(d&&d.数据){ c.innerHTML='';
+                d.数据.slice(0,10).forEach(i=>{
+                    const div=document.createElement('div');
+                    div.className='search-item';
+                    div.innerHTML=`<span style="color:#7799CC;font-weight:bold;">#${i.ID}</span> ${i.名称}`;
+                    div.addEventListener('click',()=>onClick(i.ID,i.名称));
+                    c.appendChild(div);
+                });
+            } else c.innerHTML='<div style="color:#a0b4cc;padding:8px;font-size:12px;">无匹配</div>';
+        },300);
+    });
+}
+
+// ===== TAB 1 =====
+createSearch('searchInput','searchResults',(id)=>{selectSkin(id);});
+function selectSkin(id){ document.getElementById('skinId').value=id; document.getElementById('searchResults').innerHTML=''; querySkin(); }
+async function querySkin(){
+    const id=document.getElementById('skinId').value,ed=document.getElementById('error'),rd=document.getElementById('result');
+    ed.textContent=''; rd.innerHTML='<div class="loading">⏳</div>';
+    const d=await fetchJSON('/skin/'+id);
+    if(!d||d.错误||d._error){ed.textContent='❌ '+(d?.错误||d?._error||'失败');rd.innerHTML='';return;}
+    let h='<h3>📊 市场价格</h3>';
+    for(const[k,v]of Object.entries(d)){if(k==='估值分析'||k==='估值解读'||k==='图片')continue;h+=`<span class="label">${k}：</span>${v}<br>`;}
+    if(d.图片)h=`<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;"><div style="flex:1;min-width:200px;">${h}</div><div><img src="${d.图片}" style="width:160px;border-radius:8px;border:1px solid #e2eaf3;box-shadow:0 2px 8px rgba(0,0,0,0.08);" loading="lazy" onerror="this.outerHTML='<div style=\'width:160px;height:120px;border-radius:8px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;color:#a0b4cc;font-size:12px;\'>无图片</div>'"></div></div>`;
+    const v=d.估值分析;
+    if(v) h+=`<hr><h3>🧮 我的估值模型</h3><div class="valuation-box"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div><div style="color:#7799CC;font-size:.85em;">我的估值</div><div class="valuation-price">${v['我的估值']}</div></div>
+        <div style="color:#a0b4cc;">vs</div>
+        <div><div style="color:#7799CC;font-size:.85em;">市场价</div><div style="font-size:1.2em;">${v['市场价(Buff)']}</div></div>
+        <div style="margin-left:auto;text-align:right;"><div style="font-weight:bold;">${v['估值/市价比']}</div><div>${v['信号']}</div></div>
+    </div><div class="formula-box"><div>${v['说明']||''}</div><div style="margin-top:4px;">${v['分解']['炼金基价']} · ${v['分解']['品质']} · ${v['分解']['磨损']}</div></div>${d['估值解读']?`<div style="margin-top:10px;padding:10px;background:linear-gradient(135deg,#f0f7ff,#e8f4f8);border-radius:8px;border:1px solid #c5d6eb;font-size:13px;line-height:1.7;"><b>💬 LLM 解读</b><br>${d['估值解读']}</div>`:''}</div>`;
+    rd.innerHTML=h;
+}
+
+// ===== TAB 2 =====
+let roiData=[],roiSortKey='回报率',roiSortDesc=true;
+async function loadRoiList(){
+    if(roiData.length>0){showRoiList();renderRoiTable();return;}
+    showRoiList(); const ed=document.getElementById('roiError'),rd=document.getElementById('roiResult');
+    ed.textContent=''; rd.innerHTML='<div class="loading">⏳ 加载回报率列表...</div>';
+    const d=await fetchJSON('/cases/roi/list');
+    if(!d||!d.列表){ed.textContent='❌ 获取失败';rd.innerHTML='';return;}
+    roiData=d.列表; renderRoiTable();
+}
+function renderRoiTable(){
+    const s=[...roiData].sort((a,b)=>{
+        if(roiSortKey==='回报率')return roiSortDesc?parseFloat(b.回报率)-parseFloat(a.回报率):parseFloat(a.回报率)-parseFloat(b.回报率);
+        if(roiSortKey==='纯利润')return roiSortDesc?b.纯利润-a.纯利润:a.纯利润-b.纯利润;
+        if(roiSortKey==='售价')return roiSortDesc?b.在售价-a.在售价:a.在售价-b.在售价;
+        if(roiSortKey==='上线时间'){const va=a.上线时间||'',vb=b.上线时间||'';return roiSortDesc?vb.localeCompare(va):va.localeCompare(vb);}
+        return 0;
+    });
+    const arr=k=>k===roiSortKey?(roiSortDesc?'▼':'▲'):'';
+    let h=`<p style="color:#a0b4cc;font-size:12px;padding:8px 8px 0;">共 ${roiData.length} 个</p>
+        <table><tr><th onclick="roiSortKey='回报率';roiSortDesc=!roiSortDesc;renderRoiTable()">回报率<span class="sort-arrow">${arr('回报率')}</span></th>
+        <th onclick="roiSortKey='纯利润';roiSortDesc=!roiSortDesc;renderRoiTable()">纯利润<span class="sort-arrow">${arr('纯利润')}</span></th>
+        <th onclick="roiSortKey='售价';roiSortDesc=!roiSortDesc;renderRoiTable()">售价<span class="sort-arrow">${arr('售价')}</span></th>
+        <th onclick="roiSortKey='上线时间';roiSortDesc=!roiSortDesc;renderRoiTable()">上线时间<span class="sort-arrow">${arr('上线时间')}</span></th>
+        <th>名称</th><th>预期收益</th><th>获取方式</th></tr>`;
+    for(const i of s){
+        const roi=parseFloat(i.回报率),p=i.纯利润,tag=roi>50?'tag-gold':roi>30?'tag-blue':'';
+        h+=`<tr class="roi-row" onclick="showDetail(${i.id})">
+            <td style="font-weight:bold;color:${roi>40?'#d97706':roi>20?'#3b82f6':'#2c3e50'}">${i.回报率}</td>
+            <td style="color:${p>0?'#22c55e':'#ef4444'}">${p>0?'+':''}¥${p}</td>
+            <td>¥${i.在售价}</td><td>${i.上线时间}</td>
+            <td><span class="tag ${tag}">${tag?'🔥':''}</span> ${i.名称}</td>
+            <td>¥${i.预期收益}</td><td>${i.获取方式}</td></tr>`;
+    }
+    h+=`</table>`; document.getElementById('roiResult').innerHTML=h;
+}
+function showRoiList(){document.getElementById('roiListCard').style.display='block';document.getElementById('roiDetailCard').style.display='none';}
+async function showDetail(caseId){
+    document.getElementById('roiListCard').style.display='none';document.getElementById('roiDetailCard').style.display='block';
+    const ed=document.getElementById('detailError'),rd=document.getElementById('detailResult');
+    ed.textContent='';rd.innerHTML='<div class="loading">⏳</div>';
+    const d=await fetchJSON('/case/'+caseId+'/detail');
+    if(!d||d.错误||d._error){ed.textContent='❌ '+(d?.错误||d?._error||'失败');rd.innerHTML='';return;}
+    const p=d.纯利润;
+    let h=`<h3>📦 ${d.武器箱}</h3><div class="flex-row" style="margin:10px 0;">
+        <div class="stat-box"><div class="stat-value" style="color:#d97706;">${d.回报率}</div><div class="stat-label">回报率</div></div>
+        <div class="stat-box"><div class="stat-value">¥${d.预期收益}</div><div class="stat-label">预期收益</div></div>
+        <div class="stat-box"><div class="stat-value" style="color:${p>0?'#22c55e':'#ef4444'}">${p>0?'+':''}¥${p}</div><div class="stat-label">纯利润</div></div>
+        <div class="stat-box"><div class="stat-value">¥${d.钥匙价格}</div><div class="stat-label">钥匙价格</div></div></div>
+        <div style="color:#7799CC;font-size:13px;margin-bottom:10px;">📅 ${d.上线时间} · ${d.获取方式} · 共${d.总饰品数}件</div>`;
+    for(const q of d.品质分布){
+        const c=q.品质==='军规级'?'tag-blue':q.品质==='受限级'?'tag-purple':q.品质==='保密级'?'tag-pink':q.品质==='隐秘级'?'tag-red':'tag-gold';
+        h+=`<div style="margin:8px 0;"><span class="tag ${c}">${q.品质}</span> ${q.数量}个 · 均价¥${q.平均价格}
+            <div style="color:#a0b4cc;font-size:12px;line-height:1.6;">${q.饰品列表.map(i=>i.名称).join('、')}</div></div>`;
+    }
+    rd.innerHTML=h;
+}
+
+// ===== TAB 3 =====
+createSearch('trendSearch','trendSearchResults',(id,name)=>{document.getElementById('trendId').value=id;document.getElementById('trendSearch').value=name;document.getElementById('trendSearchResults').innerHTML='';queryTrend();});
+function selectTrend(id){document.getElementById('trendId').value=id;queryTrend();}
+async function queryTrend(){
+    const id=document.getElementById('trendId').value,ed=document.getElementById('trendError'),rd=document.getElementById('trendResult');
+    ed.textContent='';rd.innerHTML='<div class="loading">⏳</div>';
+    const d=await fetchJSON('/skin/'+id+'/trend');
+    if(!d||d.错误||d._error){ed.textContent='❌ '+(d?.错误||d?._error||'失败');rd.innerHTML='';return;}
+    let h=`<h3>📈 ${d.名称}</h3><div class="stat-box" style="margin:8px 0;"><div class="stat-value">¥${d.当前价格}</div><div class="stat-label">当前Buff售价</div></div>`;
+    const pts=d.价格走势;
+    if(pts&&pts.length>0){
+        h+=`<h4 style="margin:12px 0 6px;color:#7799CC;font-size:13px;">📊 Buff近90天价格（${pts.length}个点）</h4>`;
+        const vals=pts.map(p=>p.价格),min=Math.min(...vals),max=Math.max(...vals),rng=max-min||1;
+        h+=`<div class="chart-area"><div class="chart-bars" style="min-width:${pts.length*12}px;">`;
+        for(const p of pts)h+=`<div style="flex:1;height:${((p.价格-min)/rng*100).toFixed(0)}%;background:${p.价格>=pts[0]?.价格?'#22c55e':'#ef4444'};border-radius:2px 2px 0 0;min-width:6px;" title="¥${p.价格} (${p.时间})"></div>`;
+        h+=`</div></div><table><tr><th>日期</th><th>收盘价</th><th>最高</th><th>最低</th></tr>`;
+        for(const p of pts.slice(-15))h+=`<tr><td>${p.时间}</td><td>¥${p.价格}</td><td>¥${p.最高价||'-'}</td><td>¥${p.最低价||'-'}</td></tr>`;
+        h+=`</table>`;
+    }
+    const pl=d.各平台价格;
+    if(pl)h+=`<h4 style="margin:12px 0 6px;color:#7799CC;font-size:13px;">🏪 各平台价格</h4><table>${Object.entries(pl).map(([k,v])=>`<tr><td>${k}</td><td>¥${v}</td></tr>`).join('')}</table>`;
+    rd.innerHTML=h;
+}
+
+// ===== TAB 4: 挂刀 =====
+async function queryArb(){
+    const p=document.getElementById('arbPlat').value,s=document.getElementById('arbSort').value;
+    const min=document.getElementById('arbMin').value||1,max=document.getElementById('arbMax').value||5000;
+    const t=document.getElementById('arbTv').value||0,fee=document.getElementById('arbFee').value;
+    const ed=document.getElementById('arbError'),rd=document.getElementById('arbResult');
+    ed.textContent='';rd.innerHTML='<div class="loading">⏳ 计算中...</div>';
+    const d=await fetchJSON(`/arbitrage/list?page=1&res=0&platforms=${p}&sort_by=${s}&min_price=${min}&max_price=${max}&turnover=${t}&fee_rate=${fee}`);
+    if(!d||d.错误||d._error){ed.textContent='❌ '+(d?.错误||d?._error||'失败');rd.innerHTML='';return;}
+    let h=`<p style="color:#a0b4cc;font-size:12px;margin-bottom:8px;">共 ${d.总数} 条 · 按挂刀比例升序</p>
+        <table><tr><th>饰品</th><th>Buff售价</th><th>Steam求购</th><th>手续费</th><th>到手余额</th><th>挂刀比例</th><th>收益率</th><th>日成交量</th></tr>`;
+    for(const i of d.数据){
+        const r=i.挂刀比例,rt=parseFloat(i.收益率),c=r<=0.8?'#22c55e':r<=0.9?'#d97706':'#ef4444';
+        h+=`<tr><td>${i.名称}</td><td>¥${i.Buff售价}</td><td>¥${i.Steam求购价}</td>
+            <td>¥${i.Steam手续费}</td><td>¥${i.Steam到手余额}</td>
+            <td style="font-weight:bold;color:${c}">${r}</td>
+            <td style="color:${rt>0?'#22c55e':'#ef4444'}">${i.收益率}</td><td>${i.Steam日成交量}</td></tr>`;
+    }
+    h+=`</table>`;rd.innerHTML=h;
+}
+
+// ===== TAB 5: AI 分析 =====
+createSearch('aiSearch','aiSearchResults',(id,name)=>{document.getElementById('aiSkinId').value=id;document.getElementById('aiSearch').value=name;document.getElementById('aiSearchResults').innerHTML='';queryAI();});
+function selectAI(id){document.getElementById('aiSkinId').value=id;queryAI();}
+async function queryAI(){
+    const id=document.getElementById('aiSkinId').value,ed=document.getElementById('aiError'),rd=document.getElementById('aiResult');
+    ed.textContent='';rd.innerHTML='<div class="loading">⏳ AI 分析中...</div>';
+    const d=await fetchJSON('/analysis/'+id);
+    if(!d||d.错误||d._error){ed.textContent='❌ '+(d?.错误||d?._error||'失败');rd.innerHTML='';return;}
+    const score=parseInt(d.综合评分);
+    const barColor=score>=70?'#22c55e':score>=50?'#d97706':score>=30?'#ef4444':'#dc2626';
+    let h=`<h3>🤖 ${d.名称}</h3>
+        <div class="flex-row" style="margin:10px 0;">
+            <div class="stat-box"><div class="stat-value" style="font-size:2em;color:${barColor};">${d.综合评分}</div><div class="stat-label">综合评分</div></div>
+            <div class="stat-box"><div class="stat-value" style="font-size:1.5em;">${d.结论}</div><div class="stat-label">结论</div></div>
+            <div class="stat-box"><div class="stat-value">${d.当前价格}</div><div class="stat-label">当前价格</div></div>
+        </div>
+        <div class="score-bar"><div class="score-fill" style="width:${score}%;background:${barColor};"></div></div>
+        <p style="margin:12px 0;padding:12px;background:linear-gradient(135deg,#f0f7ff,#f8fafc);border-radius:8px;border:1px solid #c5d6eb;font-size:14px;line-height:1.8;">
+            <b>📝 分析摘要</b><br>${d.分析摘要}</p>
+        <h4 style="color:#7799CC;font-size:13px;margin:12px 0 8px;">📋 信号明细</h4>`;
+    for(const s of d.信号明细){
+        const cls=s.includes('🟢')?'signal-green':s.includes('🔴')?'signal-red':s.includes('🟡')||s.includes('🟠')?'signal-yellow':'signal-gray';
+        h+=`<div class="signal-item ${cls}">${s}</div>`;
+    }
+    h+=`<h4 style="color:#7799CC;font-size:13px;margin:12px 0 8px;">📊 关键指标</h4><table>`;
+    for(const[k,v]of Object.entries(d.关键指标))h+=`<tr><td>${k}</td><td>${v}</td></tr>`;
+    h+=`</table>`;
+    if(d.LLM分析)h+=`<h4 style="color:#7799CC;font-size:13px;margin:12px 0 8px;">🧠 LLM 投资分析报告</h4><div style="padding:14px;background:linear-gradient(135deg,#f0f7ff,#f8fafc);border-radius:10px;border:1px solid #c5d6eb;font-size:13px;line-height:1.9;white-space:pre-wrap;">${d.LLM分析}</div>`;
+    rd.innerHTML=h;
+}
+
+window.onload=()=>{loadMarketIndex();querySkin();}
+async function loadMarketIndex(){
+    const el=document.getElementById('marketInfo');
+    const d=await fetchJSON('/market/index');
+    if(d&&d.name){
+        const c7=parseFloat(d.change_7d),c30=parseFloat(d.change_30d);
+        const color7=c7>0?'#22c55e':c7<0?'#ef4444':'#7799CC';
+        const color30=c30>0?'#22c55e':c30<0?'#ef4444':'#7799CC';
+        el.innerHTML=`<span style="font-weight:bold;color:#2c3e50;">📊 饰品指数</span>
+            <span>当前 <b>¥${d.now}</b></span>
+            <span>今日 <span style="color:${color7}">${d.rate_today}</span></span>
+            <span>近7天 <span style="color:${color7};font-weight:bold;">${d.change_7d}</span></span>
+            <span>近30天 <span style="color:${color30};font-weight:bold;">${d.change_30d}</span></span>`;
+    }else{
+        el.innerHTML=`<span style="color:#a0b4cc;">📊 大盘指数暂不可用</span>`;
+    }
+}
+</script>
+</body>
+</html>
