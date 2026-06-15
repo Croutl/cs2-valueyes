@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# 数据库
+*.db
+
+# 环境变量（含 API Key）
+.env
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# 临时/调试文件
+_debug*.py
+_check*.py
+*.txt
+!requirements.txt
+*.xlsx
+*.csv
+*.pkl
+*.pth
+
+# Markdown（保留重要文档）
+*.md
+!README.md
+!wzwork.md
+!zgwork.md
+
+# 系统
+Thumbs.db
+.DS_Store
+
+# 备份文件夹
+cs饰品 - 副本*/
