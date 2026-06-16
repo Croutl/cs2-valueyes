@@ -1,4 +1,4 @@
-@echo off
+@echo on
 title CS2 ValuEyes
 cd /d "%~dp0"
 
@@ -7,7 +7,7 @@ echo     CS2 ValuEyes v3.0
 echo ============================================
 echo.
 
-:: ---------- find Python (try py launcher first) ----------
+:: ---------- find Python ----------
 set PYTHON=
 py --version >nul 2>&1
 if %errorlevel% equ 0 (
@@ -25,15 +25,6 @@ if %errorlevel% equ 0 (
 )
 echo [OK] Using: %PYTHON%
 %PYTHON% --version
-
-:: ---------- check data file ----------
-dir *id*.json >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Missing data file
-    pause
-    exit /b 1
-)
-echo [OK] Data file found
 
 :: ---------- csqaq_api.py ----------
 if not exist "csqaq_api.py" (
@@ -54,9 +45,17 @@ if not exist ".venv" (
     echo [OK] Virtual environment created
 )
 
-echo [..] Installing dependencies...
+echo [..] Activating virtual environment...
 call .venv\Scripts\activate.bat
-pip install -r requirements.txt -q
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to activate virtual environment
+    pause
+    exit /b 1
+)
+
+:: ---------- install dependencies ----------
+echo [..] Installing dependencies (may take a while on first run)...
+pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo [WARN] Some deps failed, trying to start anyway...
 )
@@ -80,13 +79,14 @@ echo [OK] Port %PORT% is available
 echo.
 echo ============================================
 echo     Starting server...
-echo.
 echo     Visit: http://localhost:%PORT%/ui
 echo     Press Ctrl+C to stop
 echo ============================================
 echo.
 start http://localhost:%PORT%/ui
+
 %PYTHON% csqaq_api.py --port %PORT%
+
 echo.
 echo [INFO] Server stopped (press any key to close)
 pause
