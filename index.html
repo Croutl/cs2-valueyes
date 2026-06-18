@@ -24,6 +24,10 @@
         input:focus,select:focus{outline:none;border-color:#7799CC;box-shadow:0 0 0 3px rgba(119,153,204,.15)}
         button{padding:9px 18px;background:#7799CC;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:bold;white-space:nowrap}
         button:hover{background:#5a7fb3}
+        .clear-btn{background:#e2eaf3!important;color:#7799CC!important;font-size:14px!important;padding:9px 14px!important;min-width:auto!important;flex:none!important}
+        .clear-btn:hover{background:#d0dceb!important;color:#5a7fb3!important}
+        .hot-skins-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+        .hot-label{color:#a0b4cc;font-size:12px;padding:4px 0;margin-right:4px;white-space:nowrap}
         .result{background:#f8fafc;border-radius:8px;padding:14px;margin-top:10px;line-height:2;font-size:14px;overflow-x:auto;border:1px solid #e2eaf3}
         .label{color:#7799CC;font-weight:bold}
         .quick-btn{padding:4px 10px;background:#f0f4f8;border-radius:14px;cursor:pointer;font-size:12px;border:1px solid #d0dceb;color:#7799CC;display:inline-block;margin:2px}
@@ -131,20 +135,20 @@
     <div class="tab-content active" id="tab-price">
         <div class="card">
             <h2>🔍 搜索饰品</h2>
-            <div class="search-wrap">
-                <input type="text" id="searchInput" placeholder="输入中文名称（支持模糊搜索）" autocomplete="off">
+            <div class="search-wrap" style="display:flex;gap:4px;">
+                <input type="text" id="searchInput" placeholder="输入中文名称（支持模糊搜索）" autocomplete="off" style="flex:1;">
+                <button class="clear-btn" onclick="clearInput('searchInput');document.getElementById('searchResults').innerHTML='';" title="清空搜索">✕</button>
                 <div id="searchResults" class="search-results"></div>
             </div>
         </div>
         <div class="card">
             <h2>💰 实时价格 & 智能估值</h2>
-            <div class="input-group">
-                <input type="number" id="skinId" value="21632">
-                <button onclick="querySkin()">查询</button>
+            <div class="input-group" style="display:flex;gap:8px;align-items:center;">
+                <input type="number" id="skinId" value="21632" style="flex:1;">
+                <button class="clear-btn" onclick="clearInput('skinId')" title="清空" style="flex:none;padding:9px 12px;">✕</button>
+                <button onclick="querySkin()" style="flex:none;">查询</button>
             </div>
-            <div class="quick-btn" onclick="selectSkin(21632)">AK-47 新红浪潮</div>
-            <div class="quick-btn" onclick="selectSkin(243)">AWP 巨龙传说</div>
-            <div class="quick-btn" onclick="selectSkin(19558)">格洛克 崩络克</div>
+            <div id="priceQuickBtns" class="hot-skins-row"><span class="hot-label">🔥 热门推荐：</span></div>
             <div class="error" id="error"></div>
             <div class="result" id="result"></div>
         </div>
@@ -170,13 +174,15 @@
         <div class="card">
             <h2>📈 K线图（蜡烛图）· Buff价格走势</h2>
             <div class="mini-search">
-                <div class="search-wrap" style="width:100%;">
-                    <input type="text" id="trendSearch" placeholder="输入中文名称搜索（支持模糊搜索）" autocomplete="off">
+                <div class="search-wrap" style="width:100%;display:flex;gap:4px;">
+                    <input type="text" id="trendSearch" placeholder="输入中文名称搜索（支持模糊搜索）" autocomplete="off" style="flex:1;">
+                    <button class="clear-btn" onclick="clearInput('trendSearch');document.getElementById('trendSearchResults').innerHTML='';" title="清空搜索">✕</button>
                     <div id="trendSearchResults" class="search-results"></div>
                 </div>
             </div>
-            <div class="input-group">
-                <input type="number" id="trendId" value="21632">
+            <div class="input-group" style="display:flex;gap:8px;align-items:center;">
+                <input type="number" id="trendId" value="21632" style="flex:1;">
+                <button class="clear-btn" onclick="clearInput('trendId')" title="清空" style="flex:none;padding:9px 12px;">✕</button>
                 <select id="trendPeriod" style="flex:0.5;min-width:100px;">
                     <option value="30">近30天</option>
                     <option value="90" selected>近90天</option>
@@ -185,9 +191,7 @@
                 </select>
                 <button onclick="queryTrend()">查看K线图</button>
             </div>
-            <div class="quick-btn" onclick="selectTrend(21632)">AK-47 新红浪潮</div>
-            <div class="quick-btn" onclick="selectTrend(243)">AWP 巨龙传说</div>
-            <div class="quick-btn" onclick="selectTrend(19653)">AK-47 传承</div>
+            <div id="trendQuickBtns" class="hot-skins-row"><span class="hot-label">🔥 热门推荐：</span></div>
             <div class="error" id="trendError"></div>
             <!-- K线图容器 -->
             <div id="trendChart" class="chart-container"></div>
@@ -225,25 +229,37 @@
     <!-- TAB 7: ML 预测 -->
     <div class="tab-content" id="tab-mlpredict">
         <div class="card">
+            <!-- 模型精度提醒横幅 -->
+            <div id="mlWarningBanner" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;line-height:1.7;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <span style="font-size:18px;">⚠️</span>
+                    <span style="font-weight:bold;color:#92400e;">模型精度提醒</span>
+                </div>
+                <div style="color:#78350f;">
+                    本模型基于历史数据训练，<b>仅预测价格涨跌方向和大致幅度</b>，准确率有限，<b style="color:#dc2626;">不可作为投资决策的唯一依据</b>，仅供参考！
+                    <span id="mlModelMetrics" style="display:block;margin-top:6px;padding:8px;background:rgba(255,255,255,0.6);border-radius:6px;font-size:12px;color:#78350f;">
+                        ⏳ 加载模型指标...
+                    </span>
+                </div>
+            </div>
             <h2>🧠 ML 价格预测（机器学习 v1.0）</h2>
             <p style="color:#7799CC;font-size:13px;margin-bottom:10px;">
                 基于 RandomForest 模型，从全量爬取数据中学习价格规律<br>
                 <span style="font-size:11px;">综合考虑价格、市场深度、存世量、同类对比等多维特征</span>
             </p>
             <div class="mini-search">
-                <div class="search-wrap" style="width:100%;">
-                    <input type="text" id="mlSearch" placeholder="输入中文名称搜索（支持模糊搜索）" autocomplete="off">
+                <div class="search-wrap" style="width:100%;display:flex;gap:4px;">
+                    <input type="text" id="mlSearch" placeholder="输入中文名称搜索（支持模糊搜索）" autocomplete="off" style="flex:1;">
+                    <button class="clear-btn" onclick="clearInput('mlSearch');document.getElementById('mlSearchResults').innerHTML='';" title="清空搜索">✕</button>
                     <div id="mlSearchResults" class="search-results"></div>
                 </div>
             </div>
-            <div class="input-group">
-                <input type="number" id="mlSkinId" value="21632">
-                <button onclick="queryMLPredict()">🧠 ML 预测</button>
+            <div class="input-group" style="display:flex;gap:8px;align-items:center;">
+                <input type="number" id="mlSkinId" value="21632" style="flex:1;">
+                <button class="clear-btn" onclick="clearInput('mlSkinId')" title="清空" style="flex:none;padding:9px 12px;">✕</button>
+                <button onclick="queryMLPredict()" style="flex:none;">🧠 ML 预测</button>
             </div>
-            <div class="quick-btn" onclick="selectML(21632)">AK-47 新红浪潮</div>
-            <div class="quick-btn" onclick="selectML(243)">AWP 巨龙传说</div>
-            <div class="quick-btn" onclick="selectML(19653)">AK-47 传承</div>
-            <div class="quick-btn" onclick="selectML(19558)">格洛克 崩络克</div>
+            <div id="mlQuickBtns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"><span style="color:#a0b4cc;font-size:12px;padding:4px 0;">⏳ 加载热门饰品...</span></div>
             <div class="error" id="mlError"></div>
             <div class="result" id="mlResult"></div>
         </div>
@@ -584,6 +600,14 @@ async function queryArb(){
 }
 
 // ===== TAB 7: ML 预测 =====
+function clearInput(id){
+    document.getElementById(id).value='';
+    document.getElementById(id).focus();
+}
+function clearSearch(inputId,resultId){
+    document.getElementById(inputId).value='';
+    if(resultId) document.getElementById(resultId).innerHTML='';
+}
 createSearch('mlSearch','mlSearchResults',(id,name)=>{document.getElementById('mlSkinId').value=id;document.getElementById('mlSearch').value=name;document.getElementById('mlSearchResults').innerHTML='';queryMLPredict();});
 function selectML(id){document.getElementById('mlSkinId').value=id;queryMLPredict();}
 async function queryMLPredict(){
@@ -621,12 +645,68 @@ async function queryMLPredict(){
     h+=`<h4 style="color:#7799CC;font-size:13px;margin:12px 0 8px;">📊 关键数据</h4><table>`;
     for(const[k,v]of Object.entries(kd))h+=`<tr><td style="width:160px;">${k}</td><td>${v}</td></tr>`;
     h+=`</table>
-        <div style="font-size:11px;color:#a0b4cc;margin-top:10px;padding:8px;background:#f8fafc;border-radius:6px;">${d.技术说明}</div>`;
+        <div style="font-size:11px;color:#a0b4cc;margin-top:10px;padding:8px;background:#f8fafc;border-radius:6px;">${d.技术说明}${d._model_r2?' | 模型 R²='+d._model_r2:''}${d._direction_acc?' | 方向准确率='+(d._direction_acc*100).toFixed(1)+'%':''}${d._model_type?' | '+d._model_type:''}</div>`;
     rd.innerHTML=h;
 }
 
-window.onload=()=>{loadMarketIndex();querySkin();}
-async function loadMarketIndex(){
+window.onload=()=>{loadMarketIndex();querySkin();loadModelInfo();loadHotSkins();}
+async function loadModelInfo(){
+    const el=document.getElementById('mlModelMetrics');
+    if(!el)return;
+    const d=await fetchJSON('/ml/model_info');
+    if(d&&d.可用){
+        const r2 = d['R²'];
+        const dirAcc = d['方向准确率'] ? (d['方向准确率']*100).toFixed(1) + '%' : '计算中...';
+        el.innerHTML=`
+            <b>模型指标：</b>
+            R² = ${r2.toFixed(4)}（模型解释力）&nbsp;|&nbsp;
+            方向准确率：${dirAcc}（涨跌判断）&nbsp;|&nbsp;
+            特征维度：${d.特征维度}&nbsp;|&nbsp;
+            模型：${d.模型类型}<br>
+            <b>训练时间：</b>${d.训练时间 || '未知'}&nbsp;|&nbsp;
+            <b>训练时大盘：</b>${d['训练时大盘状态'] || '未知'}&nbsp;|&nbsp;
+            <b>自动重训：</b>${d['自动重训'] || '—'}<br>
+            <span style="color:#b45309;font-size:11px;">${d.说明}</span>
+                    <button onclick="retrainMLModel()" style="margin-top:6px;padding:4px 12px;font-size:11px;background:#f59e0b;color:#fff;border:none;border-radius:4px;cursor:pointer;">🔄 手动重训（获取最新大盘）</button>
+                    <span id="retrainStatus" style="margin-left:8px;font-size:11px;color:#b45309;"></span>
+                `;
+        loadHotSkins();
+    }else{
+        el.innerHTML='<span style="color:#b45309;">模型指标暂不可用</span>';
+        loadHotSkins();
+    }
+}
+async function loadHotSkins(){
+    const data=await fetchJSON('/ml/hot_skins');
+    if(!data||!data.length)return;
+    const skins=data.slice(0,9);
+    // 价格查询
+    const pe=document.getElementById('priceQuickBtns');
+    if(pe){pe.innerHTML='<span class="hot-label">🔥 热门推荐：</span>';
+        for(const s of skins){const b=document.createElement('span');b.className='quick-btn';b.textContent=s.name;b.onclick=()=>selectSkin(s.id);pe.appendChild(b);}}
+    // 价格走势
+    const te=document.getElementById('trendQuickBtns');
+    if(te){te.innerHTML='<span class="hot-label">🔥 热门推荐：</span>';
+        for(const s of skins){const b=document.createElement('span');b.className='quick-btn';b.textContent=s.name;b.onclick=()=>selectTrend(s.id);te.appendChild(b);}}
+    // ML预测
+    const me=document.getElementById('mlQuickBtns');
+    if(me){me.innerHTML='<span class="hot-label">🔥 热门推荐：</span>';
+        for(const s of skins){const b=document.createElement('span');b.className='quick-btn';b.textContent=s.name;b.onclick=()=>selectML(s.id);me.appendChild(b);}}
+}
+async function retrainMLModel(){
+    const st=document.getElementById('retrainStatus');
+    if(st) st.textContent='⏳ 重训中（约1-2分钟）...';
+    try {
+        const r=await fetchJSON('/ml/retrain');
+        if(r&&r.状态) {
+            if(st) st.textContent='✅ '+r.状态+'，自动生效中...';
+            setTimeout(()=>{ loadModelInfo(); }, 5000);
+        }
+    } catch(e) {
+        if(st) st.textContent='❌ 重训失败';
+    }
+}
+async function loadMarketIndex(retries=3){
     const el=document.getElementById('marketInfo');
     const d=await fetchJSON('/market/index');
     if(d&&d.name){
@@ -638,6 +718,9 @@ async function loadMarketIndex(){
             <span>今日 <span style="color:${color7}">${d.rate_today}</span></span>
             <span>近7天 <span style="color:${color7};font-weight:bold;">${d.change_7d}</span></span>
             <span>近30天 <span style="color:${color30};font-weight:bold;">${d.change_30d}</span></span>`;
+    }else if(retries>0){
+        // 自动重试（服务器刚启动可能还没准备好）
+        setTimeout(()=>loadMarketIndex(retries-1), 3000);
     }else{
         el.innerHTML=`<span style="color:#a0b4cc;">📊 大盘指数暂不可用</span>`;
     }

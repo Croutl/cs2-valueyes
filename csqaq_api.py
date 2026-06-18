@@ -548,16 +548,31 @@ def get_market_index():
             print(f"   📊 大盘数据已更新：近7天 {change_7d:+.2f}% | 近30天 {change_30d:+.2f}%")
             return result
         msg = data.get('msg', '') if data else '无响应'
+        # 有缓存就返回旧数据（不阻塞前端）
+        if market_cache.get("data"):
+            print(f"   ⚪ 大盘数据更新失败({msg})，使用缓存")
+            market_cache["time"] = now  # 延长缓存使用时间
+            return market_cache["data"]
         print(f"   ⚠️ 大盘数据获取失败：{msg}")
-        # 不清理缓存，下次请求自动重试
         market_cache["time"] = 0
     except requests.Timeout:
+        if market_cache.get("data"):
+            print("   ⚪ 大盘数据超时，使用缓存")
+            market_cache["time"] = now
+            return market_cache["data"]
         print("   ⚠️ 大盘数据请求超时")
         market_cache["time"] = 0
     except requests.ConnectionError:
+        if market_cache.get("data"):
+            print("   ⚪ 大盘连接失败，使用缓存")
+            market_cache["time"] = now
+            return market_cache["data"]
         print("   ⚠️ 大盘数据连接失败，请检查网络")
         market_cache["time"] = 0
     except Exception as e:
+        if market_cache.get("data"):
+            market_cache["time"] = now
+            return market_cache["data"]
         print(f"   ⚠️ 大盘数据异常：{e}")
         market_cache["time"] = 0
     return None
@@ -1730,10 +1745,107 @@ def ml_predict_skin(skin_id: int):
         result = predict_by_skin_id(skin_id)
         if 'error' in result:
             return {"错误": result['error']}
+        # 追加模型指标信息
+        try:
+            import pickle, os
+            from price_predictor import MODEL_FILE
+            if os.path.exists(MODEL_FILE):
+                with open(MODEL_FILE, 'rb') as f:
+                    md = pickle.load(f)
+                result['_model_r2'] = round(md.get('r2_score', 0), 4)
+                result['_direction_acc'] = round(md.get('direction_accuracy', 0), 4)
+                result['_model_type'] = md.get('model_type', 'RandomForest')
+        except:
+            pass
         return result
     except Exception as e:
         traceback.print_exc()
         return {"错误": f"ML预测异常: {str(e)}"}
+
+@app.get("/ml/model_info")
+def ml_model_info():
+    """返回ML模型的基本信息和性能指标"""
+    try:
+        import pickle, os
+        from price_predictor import MODEL_FILE
+        if not os.path.exists(MODEL_FILE):
+            return {"可用": False, "信息": "模型尚未训练"}
+        with open(MODEL_FILE, 'rb') as f:
+            md = pickle.load(f)
+        trained_at = md.get('trained_at', 0)
+        from datetime import datetime
+        train_time_str = datetime.fromtimestamp(trained_at).strftime('%Y-%m-%d %H:%M') if trained_at else '未知'
+        market_7d = md.get('market_7d', 0)
+        market_30d = md.get('market_30d', 0)
+        return {
+            "可用": True,
+            "R²": round(md.get('r2_score', 0), 4),
+            "方向准确率": round(md.get('direction_accuracy', 0), 4),
+            "特征维度": len(md.get('feature_keys', [])),
+            "模型类型": md.get('model_type', 'RandomForest'),
+            "训练时间": train_time_str,
+            "训练时大盘状态": f"7d={market_7d:+.2f}%, 30d={market_30d:+.2f}%",
+            "自动重训": "每24小时自动用最新大盘数据更新",
+            "说明": "该模型基于历史价格和交易数据训练，仅预测价格涨跌方向和大致幅度，准确率有限，不可作为投资决策的唯一依据。"
+        }
+    except Exception as e:
+        return {"可用": False, "信息": str(e)}
+
+@app.get("/ml/retrain")
+def ml_retrain():
+    """手动触发模型重训（用最新大盘数据）"""
+    try:
+        import threading
+        from price_predictor import train_model
+        def _train():
+            print("   🔄 手动触发模型重训...")
+            train_model(force=True)
+            print("   ✅ 重训完成")
+        threading.Thread(target=_train, daemon=True).start()
+        return {"状态": "重训已启动", "说明": "重训约需1-2分钟，训练完成后自动生效"}
+    except Exception as e:
+        return {"错误": str(e)}
+
+@app.get("/ml/hot_skins")
+def ml_hot_skins():
+    """返回热门饰品列表（按成交量从CSV实时排序）"""
+    try:
+        # 尝试从CSV按成交量排序
+        import csv
+        pairs = {}  # id -> (name, volume)
+        for path in ['skins_full.csv', 'skins_raw(1).csv']:
+            if not os.path.exists(path): continue
+            with open(path, 'r', encoding='utf-8-sig') as f:
+                for row in csv.DictReader(f):
+                    sid = row.get('id','').strip()
+                    if not sid: continue
+                    name = row.get('name', '')
+                    # 过滤武器箱、印花、涂鸦
+                    if '武器箱' in name or 'Case' in name: continue
+                    if '印花' in name or name.startswith('Sticker'): continue
+                    if '涂鸦' in name or 'Graffiti' in name: continue
+                    if '胶囊' in name or '钥匙' in name: continue
+                    sell = float(row.get('sell_num',0) or 0)
+                    buy = float(row.get('buy_num',0) or 0)
+                    vol = sell + buy
+                    if sid not in pairs or vol > pairs[sid][1]:
+                        pairs[sid] = (name, int(vol))
+        if pairs:
+            # 按成交量排序取前9
+            top = sorted(pairs.items(), key=lambda x: x[1][1], reverse=True)[:9]
+            return [{"id": int(sid), "name": name} for sid, (name, vol) in top]
+        raise Exception("CSV无数据")
+    except Exception as e:
+        # 降级到硬编码
+        return [{"id": 21632, "name": "AK-47 新红浪潮"},
+                {"id": 243, "name": "AWP 巨龙传说"},
+                {"id": 19653, "name": "AK-47 传承"},
+                {"id": 19558, "name": "格洛克 崩络克"},
+                {"id": 21763, "name": "USP 脑洞大开"},
+                {"id": 19771, "name": "沙漠之鹰 印花集"},
+                {"id": 21819, "name": "AK-47 燃塔"},
+                {"id": 21015, "name": "M4 龙王金刚"},
+                {"id": 21497, "name": "M4A1 印花集"}]
 
 @app.get("/collect/{skin_id}")
 def collect_skin(skin_id: int):
@@ -1832,7 +1944,12 @@ if __name__ == "__main__":
     if not bind_success:
         print("   ⚠️ IP 绑定未确认，API 请求可能因 IP 校验失败")
     print("   ⏳ 预热大盘指数数据...")
-    get_market_index()
+    # 预热：首次获取大盘数据的API调用可能因IP绑定延迟而失败，这是正常的
+    warmup_data = get_market_index()
+    if warmup_data:
+        print(f"   📊 大盘指数已加载")
+    else:
+        market_cache["time"] = 0  # 确保后续请求会重试
     print("   ⏳ 启动后台价格采集器...")
     start_background_collector()
     print("   ⏳ 预采集热门饰品价格...")
@@ -1848,8 +1965,13 @@ if __name__ == "__main__":
     print("   ⏳ 预热ML价格预测模型...")
     try:
         from price_predictor import train_model
-        train_model()
-        print("   ✅ ML价格预测模型已就绪")
+        # 启动时用当前大盘数据重训，让模型感知最新市场态势
+        import threading
+        def _startup_retrain():
+            print("   ⏳ 获取最新大盘数据重训ML模型...")
+            train_model(force=True)
+            print("   ✅ ML价格预测模型已就绪（含最新大盘态势）")
+        threading.Thread(target=_startup_retrain, daemon=True).start()
     except Exception as e:
         print(f"   ⚪ ML模型加载跳过（{e}），预测降级为规则引擎")
     print(f"   {'GET':<8} /skin/{{id}}               查饰品价格+估值")

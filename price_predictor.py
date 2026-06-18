@@ -4,6 +4,7 @@ CS2 饰品价格预测模型 v3.1
 优化：缓存+超时保护，避免预测阻塞
 """
 import os, csv, pickle, sqlite3, re, warnings, json, urllib3, time
+import requests
 import numpy as np
 from collections import defaultdict
 warnings.filterwarnings('ignore')
@@ -172,16 +173,41 @@ def extract_features(r, peer_median_price=0, hist=None, market=None):
     wtype = classify_weapon(name)
     for t in ['rifle','pistol','smg','shotgun','knife','sticker','case','other']:
         feat[f'w_{t}'] = 1 if wtype == t else 0
+    # === 交互特征 ===
+    feat['wear_rarity_interact'] = feat['wear_idx'] * feat['rarity_idx']
+    feat['price_volume_interact'] = feat['log_price'] * feat['buy_sell_ratio']
+    m7 = market.get('market_change_7d', 0) if market else 0
+    m30 = market.get('market_change_30d', 0) if market else 0
+    # 关键实时特征：个品 vs 大盘的相对强弱（预测时使用实时大盘）
+    feat['momentum_vs_market'] = max(min(feat['rate_7'] - m7, 100), -100)
+    # 市场态势编码：熊市=0 震荡=1 牛市=2（虽训练时同值，但给模型市场背景）
+    if abs(m7) < 2:
+        feat['market_regime'] = 1  # 震荡
+    elif m7 > 0:
+        feat['market_regime'] = 2  # 牛市
+    else:
+        feat['market_regime'] = 0  # 熊市
+    # 市场态势 × 物品类型交互（不同品类在不同市态下表现不同）
+    wtype = classify_weapon(name)
+    for t in ['rifle','pistol','knife','case']:
+        feat[f'regime_{t}'] = feat['market_regime'] * (1 if wtype == t else 0)
+    # 大盘30天趋势 × 个品7天动量交互
+    feat['market_30d_momentum'] = m30 * feat['rate_7'] / 100
+    feat['inventory_turnover'] = min(sell / max(inv, 1), 100) if inv > 0 else 0
+    feat['buy_pressure'] = min(buy / max(inv, 1), 100) if inv > 0 else 0
+    feat['steam_buff_ratio'] = min(steam / max(price, 0.01), 10) if price > 0 and steam > 0 else 1
+    # === 物品特征 ===
+    feat['is_stattrak'] = 1 if 'StatTrak' in name else 0
+    feat['is_souvenir'] = 1 if '纪念品' in name else 0
+    feat['ln_sell_num'] = np.log(max(sell, 1))
+    feat['ln_buy_num'] = np.log(max(buy, 1))
+    feat['sell_buy_imbalance'] = max(min((sell - buy) / max(sell + buy, 1), 1), -1)
     if hist:
         for k, v in hist.items(): feat[k] = v
     else:
         for k in ['hist_volatility','hist_price_slope','hist_short_term','hist_buy_volatility','hist_data_days']:
             feat[k] = 0
-    if market:
-        feat['market_change_7d'] = market.get('market_change_7d', 0)
-        feat['market_change_30d'] = market.get('market_change_30d', 0)
-    else:
-        feat['market_change_7d'] = 0; feat['market_change_30d'] = 0
+    # 不再将 market_change 作为直接特征（训练时是常量，无信息量）
     return feat
 
 KEYS = [
@@ -189,7 +215,13 @@ KEYS = [
     'rate_7','steam_premium','rarity_idx','wear_idx','relative_to_peers',
     'w_rifle','w_pistol','w_smg','w_shotgun','w_knife','w_sticker','w_case','w_other',
     'hist_volatility','hist_price_slope','hist_short_term','hist_buy_volatility','hist_data_days',
-    'market_change_7d','market_change_30d',
+    'momentum_vs_market','market_regime',
+    'regime_rifle','regime_pistol','regime_knife','regime_case',
+    'market_30d_momentum',
+    'wear_rarity_interact','price_volume_interact',
+    'inventory_turnover','buy_pressure','steam_buff_ratio',
+    'is_stattrak','is_souvenir','ln_sell_num','ln_buy_num','sell_buy_imbalance',
+    'is_fallback',
 ]
 
 # ====================== 数据加载（5分钟缓存） ======================
@@ -220,30 +252,47 @@ def build_peer_stats(rows):
 def prepare_training_data(rows, market=None):
     peer_median = build_peer_stats(rows)
     X, y = [], []
-    skipped = 0
+    skipped = {'no_target': 0, 'bad_rate30': 0, 'extreme': 0, 'low_price': 0}
+    fallback_used = 0
     for r in rows:
-        rate_30_str = r.get('rate_30', '').strip().lstrip('+')
-        if not rate_30_str:
-            skipped += 1
+        # 优先用 rate_30，没有则回退到 rate_7
+        target_str = r.get('rate_30', '').strip().lstrip('+')
+        is_fallback = 0
+        if not target_str:
+            target_str = r.get('rate_7', '').strip().lstrip('+')
+            if target_str:
+                is_fallback = 1
+        if not target_str:
+            skipped['no_target'] += 1
             continue
         try:
-            rate_30 = float(rate_30_str)
+            target = float(target_str)
         except ValueError:
-            skipped += 1
+            skipped['bad_rate30'] += 1
             continue
-        if abs(rate_30) > 100:
-            skipped += 1
+        if abs(target) > 200:
+            skipped['extreme'] += 1
             continue
-        if float(r.get('price', 0) or 0) <= 1:
-            skipped += 1
+        target = max(min(target, 100), -100)
+        if float(r.get('price', 0) or 0) <= 0.1:
+            skipped['low_price'] += 1
             continue
+
         pid = int(r.get('id', 0))
         h = extract_history_features(DB_PATH, pid)
         pm = peer_median.get((r.get('rarity',''), r.get('wear','')), 0)
         f = extract_features(r, pm, h, market)
-        X.append([f[k] for k in KEYS]); y.append(rate_30)
-    if skipped:
-        print(f"   ⏭ 跳过 {skipped} 条无效数据")
+        f['is_fallback'] = is_fallback
+        X.append([f[k] for k in KEYS])
+        y.append(target)
+        if is_fallback:
+            fallback_used += 1
+
+    total_skipped = sum(skipped.values())
+    if total_skipped:
+        print(f"   ⏭ 跳过 {total_skipped} 条: 无目标值={skipped['no_target']} 格式错误={skipped['bad_rate30']} 极值={skipped['extreme']} 低价={skipped['low_price']}")
+    if fallback_used:
+        print(f"   🔄 用 rate_7 替代 rate_30: {fallback_used} 条")
     return np.nan_to_num(np.array(X), nan=0), np.array(y), peer_median
 
 # ====================== 训练 ======================
@@ -251,7 +300,7 @@ def prepare_training_data(rows, market=None):
 def train_model(force=False):
     if os.path.exists(MODEL_FILE) and not force:
         return
-    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import r2_score
 
@@ -275,27 +324,73 @@ def train_model(force=False):
     w_train = np.ones(len(y_train))
     w_train[y_train > 0] = 1.8
 
-    model = RandomForestRegressor(
-        n_estimators=400, max_depth=12, min_samples_leaf=5,
-        random_state=42, n_jobs=-1
-    )
-    model.fit(X_train, y_train, sample_weight=w_train)
+    # 训练两个模型，选最优
+    models = []
 
-    y_pred_val = model.predict(X_val)
-    r2 = r2_score(y_val, y_pred_val)
-    print(f'   验证集 R² = {r2:.4f}')
+    # 1) RandomForest
+    rf = RandomForestRegressor(
+        n_estimators=800, max_depth=15, min_samples_leaf=3,
+        min_samples_split=2, random_state=42, n_jobs=-1
+    )
+    rf.fit(X_train, y_train, sample_weight=w_train)
+    rf_pred = rf.predict(X_val)
+    rf_r2 = r2_score(y_val, rf_pred)
+    rf_dir = np.mean((y_val > 0) == (rf_pred > 0))
+    models.append(('RandomForest', rf, rf_r2, rf_dir))
+    print(f'   RandomForest:  R²={rf_r2:.4f}  方向准确率={rf_dir:.2%}')
+
+    # 2) GradientBoosting（通常对结构化数据更好）
+    gb = GradientBoostingRegressor(
+        n_estimators=500, max_depth=5, min_samples_leaf=5,
+        learning_rate=0.05, subsample=0.8, random_state=42
+    )
+    gb.fit(X_train, y_train, sample_weight=w_train)
+    gb_pred = gb.predict(X_val)
+    gb_r2 = r2_score(y_val, gb_pred)
+    gb_dir = np.mean((y_val > 0) == (gb_pred > 0))
+    models.append(('GradientBoosting', gb, gb_r2, gb_dir))
+    print(f'   GradientBoosting:  R²={gb_r2:.4f}  方向准确率={gb_dir:.2%}')
+
+    # 选最优
+    models.sort(key=lambda m: m[2], reverse=True)
+    best_name, best_model, best_r2, best_dir = models[0]
+    print(f'\n✅ 选用 {best_name}:  R²={best_r2:.4f}  方向准确率={best_dir:.2%}')
 
     with open(MODEL_FILE, 'wb') as f:
         pickle.dump({
-            'model': model, 'feature_keys': KEYS, 'r2_score': r2,
+            'model': best_model, 'feature_keys': KEYS,
+            'r2_score': best_r2, 'direction_accuracy': best_dir,
+            'model_type': best_name,
+            'trained_at': time.time(),
+            'market_7d': market.get('market_change_7d', 0),
+            'market_30d': market.get('market_change_30d', 0),
             'rarity_order': RARITY_ORDER, 'wear_order': WEAR_ORDER,
         }, f)
     print('✅ 模型已保存')
 
-def load_model():
+def load_model(allow_retrain=True):
+    RETRAIN_INTERVAL = 86400  # 24小时后自动重训（获取新的大盘数据）
     if not os.path.exists(MODEL_FILE):
-        train_model()
+        if allow_retrain:
+            train_model()
+        else:
+            return None
     if os.path.exists(MODEL_FILE):
+        # 检查是否需要自动重训
+        if allow_retrain:
+            try:
+                with open(MODEL_FILE, 'rb') as f:
+                    md = pickle.load(f)
+                trained_at = md.get('trained_at', 0)
+                # 如果模型超过24小时，自动重训
+                if trained_at and (time.time() - trained_at > RETRAIN_INTERVAL):
+                    print('   🔄 模型已过期(>24h)，自动用最新大盘数据重训...')
+                    train_model(force=True)
+                    with open(MODEL_FILE, 'rb') as f:
+                        return pickle.load(f)
+                return md
+            except:
+                pass
         with open(MODEL_FILE, 'rb') as f:
             return pickle.load(f)
     return None
@@ -343,6 +438,7 @@ def predict_by_skin_id(skin_id):
     pm = peer_median.get((rarity, wear), 0)
     h = extract_history_features(DB_PATH, int(skin_id))
     f = extract_features(target, pm, h, market)
+    f['is_fallback'] = 0
     X = np.nan_to_num(np.array([[f[k] for k in KEYS]]), nan=0)
 
     model_data = load_model()
@@ -400,6 +496,18 @@ def predict_by_skin_id(skin_id):
 
     score = max(0, min(100, score))
 
+    # 置信度：基于 R² 和评分的综合判断
+    confidence = max(min(int(r2 * 100 + abs(predicted_rate) / 5), 99), 1)
+    if r2 > 0.3:
+        if score >= 70 or score <= 25:
+            conf_label = f"{confidence}% (较高)"
+        else:
+            conf_label = f"{confidence}% (中等)"
+    elif r2 > 0.2:
+        conf_label = f"{confidence}% (一般)"
+    else:
+        conf_label = f"{confidence}% (偏低)"
+
     if score >= 70:
         direction = "📈 强烈看涨"; action_advice = "建议买入"
         buy_tip = f"现价 ¥{price:.2f} 性价比不错，可建仓。"
@@ -425,6 +533,7 @@ def predict_by_skin_id(skin_id):
     return {
         '名称': name, '当前价格': f'¥{price:.2f}', '品质': rarity, '磨损': wear,
         '预测方向': direction, '综合评分': f'{score}/100',
+        '置信度': conf_label, '置信度说明': f'模型R²={r2:.3f}，结合评分{score}分综合判断',
         '预测摘要': f"综合评分 {score}/100，{action_advice}。模型预测 {predicted_rate:+.2f}%",
         '操作建议': action_advice,
         '买入建议': buy_tip, '卖出建议': sell_tip,

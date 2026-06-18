@@ -2,7 +2,7 @@
 
 > 不只是查价格——帮你判断"值不值"。
 
-基于 FastAPI 的 CS2 饰品价值分析平台。集成 Buff / Steam / 悠悠有品等多平台实时价格，提供**自研估值模型 v2.0**、**AI 投资分析**、**ML 机器学习预测**、**挂刀计算器**、**开箱回报率排行**、**K 线图走势** 六大核心功能。
+基于 FastAPI 的 CS2 饰品价值分析平台。集成 Buff / Steam / 悠悠有品等多平台实时价格，提供**自研估值模型 v2.0**、**AI 投资分析**、**挂刀计算器**、**开箱回报率排行**、**价格走势图** 五大核心功能。
 
 ## 快速启动
 
@@ -28,10 +28,7 @@ python csqaq_api.py
 
 访问 http://localhost:8000/ui
 
-> ⚠️ 首次使用需要配置 **CSQAQ API Token**：
-> 1. 在 [CSQAQ](https://csqaq.com/) 免费注册获取 Token
-> 2. 方式一（推荐）：创建 `.env` 文件，写入 `CSQAQ_API_TOKEN=你的token`
-> 3. 方式二：`set CSQAQ_API_TOKEN=你的token`
+> 如果提示 API Token 无效，在 [CSQAQ](https://csqaq.com/) 注册获取 Token 后，替换 `csqaq_api.py` 中的 `API_TOKEN` 即可。
 
 ## 截图预览
 
@@ -149,13 +146,10 @@ python csqaq_api.py
 - 显示 Steam 到手余额、收益率、日成交量
 - 支持价格区间和平台筛选
 
-### 价格走势（K 线图）
+### 价格走势
 
-- Buff 平台近 **90 天 K 线图（蜡烛图）**，支持 30/90/180/365 天周期切换
-- 每根蜡烛显示开盘/收盘/最高/最低，红跌绿涨
-- 下方面板同步显示成交量柱状图
-- 底部滑块缩放 + 鼠标滚轮缩放
-- 鼠标悬停显示完整数据
+- Buff 平台近 90 天每日收盘价（柱状图 + 表格）
+- 每日最高价 / 最低价
 - 各平台价格对比（Buff / Steam / 悠悠有品）
 - 中文名称搜索快速定位
 
@@ -173,13 +167,12 @@ python csqaq_api.py
 | 方法 | 路径 | 说明 |
 |:---|:---|:---|
 | GET | `/skin/{id}` | 饰品实时价格 + 估值模型 + LLM 解读 |
-| GET | `/search?q=&page=&page_size=` | 智能模糊搜索（分词 + 高亮 + 分页） |
+| GET | `/search?q=` | 中文名称搜索饰品 |
 | GET | `/cases/roi/list` | 武器箱 ROI 排行榜 |
 | GET | `/case/{id}/detail` | 武器箱详情（内含物 + 品质分布） |
 | GET | `/analysis/{id}` | AI 投资分析（规则引擎 + 可选 LLM） |
-| GET | `/mlpredict/{id}` | ML 价格预测（RandomForest 机器学习） |
-| GET | `/skin/{id}/trend?period=90` | K 线图走势（支持 30/90/180/365 天） |
-| GET | `/market/index` | 大盘指数状态（K 线数据） |
+| GET | `/skin/{id}/trend` | 价格走势 + 各平台价格对比 |
+| GET | `/market/index` | 大盘指数状态 |
 | GET | `/arbitrage/list` | 挂刀行情（含手续费参数） |
 | GET | `/ui` | 前端页面 |
 
@@ -188,10 +181,9 @@ python csqaq_api.py
 | 层面 | 技术 |
 |:---|:---|
 | 后端框架 | FastAPI |
-| 前端 | 原生 HTML + CSS + JS + ECharts（K 线图） |
+| 前端 | 原生 HTML + CSS + JS（无需构建工具） |
 | 数据源 | [CSQAQ](https://csqaq.com/) 开放 API |
 | 存储 | SQLite（饰品 ID 索引） |
-| 机器学习 | RandomForest（价格预测）、MLP 神经网络（PyTorch 实验） |
 | AI | 规则引擎 + DeepSeek LLM（可选） |
 
 ## 稳定性优化
@@ -265,30 +257,8 @@ python csqaq_api.py
 >
 > 价格信息谁都能拿到，但"值不值"需要分析。
 
----
+## 作者
 
-## 开发团队
-
-本项目由三人协作完成：
-
-### 🧑‍💻 项目负责人 / 全栈开发
-- 框架搭建（FastAPI + 前端页面）
-- **自研估值模型 v2.0**（四维综合估值）
-- **AI 投资分析引擎**（规则引擎 + DeepSeek LLM 集成）
-- **挂刀计算器 / 开箱回报率 / 大盘指数**
-- 一键启动脚本 `start.bat`（Windows 兼容性修复）
-- 项目文档
-
-### 🧠 王泽 — ML 价格预测模型
-- **RandomForest 机器学习模型**（24 维特征，3.8 万条数据训练）
-- **特征工程**（价格、市场深度、存世稀缺、历史波动、大盘对比等）
-- **预测评分系统**（0-100 分 + 5 档操作建议 + 多维信号分析）
-- **智能模糊搜索**（中英文分词 + 前端高亮 + 分页组件）
-- 详情见 [wzwork.md](wzwork.md)
-
-### 📊 诸葛洁涛 — 数据可视化与基础架构
-- **ECharts K 线图（双面板：蜡烛图 + 成交量）**，支持 dataZoom 缩放、周期切换
-- **大盘指数实时看板**
-- **全量饰品价格爬虫**（断点续爬）
-- **磨损系数计算**（基于真实市场数据）
-- 详情见 [zgwork.md](zgwork.md)
+- 袁子仪
+- 王泽
+- 诸葛洁涛

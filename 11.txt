@@ -1,0 +1,449 @@
+export interface ApifoxModel {
+    /**
+     * 响应状态码
+     */
+    code: number;
+    /**
+     * 响应数据
+     */
+    data: Data;
+    /**
+     * 响应信息
+     */
+    msg: string;
+    [property: string]: any;
+}
+
+/**
+ * 响应数据
+ */
+export interface Data {
+    /**
+     * 按钮列表，同类饰品不同磨损类型的切换列表
+     */
+    button_list: ButtonList[];
+    /**
+     * 该饰品所属武器箱/收藏品
+     */
+    container: Container[];
+    /**
+     * 多普勒列表
+     */
+    dpl: Dpl[];
+    /**
+     * 饰品信息
+     */
+    goods_info: GoodsInfo;
+    /**
+     * 废弃
+     */
+    is_collection: string[];
+    /**
+     * 存世量列表，存储同类型的不同饰品的存世量
+     */
+    statistic_list: StatisticList[];
+    [property: string]: any;
+}
+
+export interface ButtonList {
+    /**
+     * 是否为当前饰品
+     */
+    current: boolean;
+    /**
+     * 饰品good_id
+     */
+    id: number;
+    /**
+     * 磨损名称
+     */
+    name: string;
+    /**
+     * 是否为切换类别的按钮
+     */
+    switch: boolean;
+    [property: string]: any;
+}
+
+export interface Container {
+    /**
+     * 备注，包含大行动、稀有度、直售等信息
+     */
+    comment: string;
+    /**
+     * 上线时间，指游戏内的更新上线时间
+     */
+    created_at: string;
+    /**
+     * 收藏品id
+     */
+    id: number;
+    /**
+     * 收藏品名称
+     */
+    name: string;
+    /**
+     * 该武器箱当前价格
+     */
+    price: number;
+    /**
+     * 收藏品图片
+     */
+    url: string;
+    [property: string]: any;
+}
+
+export interface Dpl {
+    /**
+     * buff求购价
+     */
+    buff_buy_price: string;
+    /**
+     * buff在售价
+     */
+    buff_sell_price: string;
+    /**
+     * 类型编号
+     */
+    def_index: string;
+    /**
+     * 多普勒id
+     */
+    key: number;
+    /**
+     * 中文名称
+     */
+    label: string;
+    /**
+     * 皮肤编号
+     */
+    paint_index: string;
+    /**
+     * hash名称
+     */
+    short_name_en: string;
+    /**
+     * 英文数值
+     */
+    value: string;
+    [property: string]: any;
+}
+
+/**
+ * 饰品信息
+ */
+export interface GoodsInfo {
+    /**
+     * buff求购数量
+     */
+    buff_buy_num: number;
+    /**
+     * buff求购价
+     */
+    buff_buy_price: number;
+    /**
+     * buff平台饰品id
+     */
+    buff_id: number;
+    /**
+     * buff在售数量
+     */
+    buff_sell_num: number;
+    /**
+     * buff在售价
+     */
+    buff_sell_price: number;
+    /**
+     * BUFF求购套现比例
+     */
+    buff_steam_buy_conversion: number;
+    /**
+     * BUFF售价套现比例
+     */
+    buff_steam_sell_conversion: number;
+    /**
+     * c5game求购数量
+     */
+    c5_buy_num: number;
+    /**
+     * c5game求购价格
+     */
+    c5_buy_price: number;
+    /**
+     * c5game平台饰品id
+     */
+    c5_id: string;
+    /**
+     * c5game短租价格
+     */
+    c5_lease_price: number;
+    /**
+     * c5game长租价格
+     */
+    c5_long_lease_price: number;
+    /**
+     * c5game在售数量
+     */
+    c5_sell_num: number;
+    /**
+     * c5game在售价
+     */
+    c5_sell_price: number;
+    /**
+     * 类型编号
+     */
+    def_index: number;
+    /**
+     * ecosteam求购数量
+     */
+    eco_buy_num: number;
+    /**
+     * ecosteam求购价格
+     */
+    eco_buy_price: number;
+    /**
+     * eco平台饰品id
+     */
+    eco_id: string;
+    /**
+     * ecosteam在售数量
+     */
+    eco_sell_num: number;
+    /**
+     * ecosteam在售价格
+     */
+    eco_sell_price: number;
+    /**
+     * eco sku id（跳转使用）
+     */
+    eco_sku_id: string;
+    /**
+     * 饰品磨损，崭新出厂、略有磨损等
+     */
+    exterior_localized_name: string;
+    /**
+     * 所属类型名称
+     */
+    group_hash_name: string;
+    /**
+     * 饰品good_id
+     */
+    id: number;
+    /**
+     * igxe求购数量
+     */
+    igxe_buy_num: number;
+    /**
+     * igxe求购价格
+     */
+    igxe_buy_price: number;
+    /**
+     * igxe平台饰品id
+     */
+    igxe_id: string;
+    /**
+     * igxe在租数量
+     */
+    igxe_lease_num: number;
+    /**
+     * igxe短租价格
+     */
+    igxe_lease_price: number;
+    /**
+     * igxe长租价格
+     */
+    igxe_long_lease_price: number;
+    /**
+     * igxe在售数量
+     */
+    igxe_sell_num: number;
+    /**
+     * igxe在售价
+     */
+    igxe_sell_price: number;
+    /**
+     * 饰品图片
+     */
+    img: string;
+    /**
+     * steam市场唯一英文名称
+     */
+    market_hash_name: string;
+    /**
+     * 最大磨损值
+     */
+    max_float: null | string;
+    /**
+     * 最小磨损值
+     */
+    min_float: null | string;
+    /**
+     * 饰品中文名称
+     */
+    name: string;
+    /**
+     * 皮肤编号
+     */
+    paint_index: number;
+    /**
+     * steam成交量所属时间段
+     */
+    period_at: string;
+    /**
+     * 饰品类别，★、普通、★ StatTrak™、纪念品等
+     */
+    quality_localized_name: string;
+    /**
+     * 热度排名
+     */
+    rank_num: string;
+    /**
+     * 热度排名变化（较上个周期）
+     */
+    rank_num_change: string;
+    /**
+     * 饰品品质，普通级、受限、非凡、隐秘等
+     */
+    rarity_localized_name: string;
+    /**
+     * 近1日涨跌量
+     */
+    sell_price_1: number;
+    /**
+     * 近180日涨跌量
+     */
+    sell_price_180: number;
+    /**
+     * 近30日涨跌量
+     */
+    sell_price_30: number;
+    /**
+     * 近7日涨跌量
+     */
+    sell_price_7: number;
+    /**
+     * 近1日涨跌幅，单位%
+     */
+    sell_price_rate_1: number;
+    /**
+     * 近180日涨跌幅，单位%
+     */
+    sell_price_rate_180: number;
+    /**
+     * 近30日涨跌幅，单位%
+     */
+    sell_price_rate_30: number;
+    /**
+     * 近7日涨跌幅，单位%
+     */
+    sell_price_rate_7: number;
+    /**
+     * 存世量
+     */
+    statistic: number;
+    /**
+     * Steam求购挂刀比例
+     */
+    steam_buff_buy_conversion: number;
+    /**
+     * Steam在售挂刀比例
+     */
+    steam_buff_sell_conversion: number;
+    /**
+     * steam求购数量
+     */
+    steam_buy_num: number;
+    /**
+     * steam求购价
+     */
+    steam_buy_price: number;
+    /**
+     * steam在售数量
+     */
+    steam_sell_num: number;
+    /**
+     * steam在售价
+     */
+    steam_sell_price: number;
+    /**
+     * steam成交均价，单位$
+     */
+    turnover_avg_price: number;
+    /**
+     * steam成交量
+     */
+    turnover_number: number;
+    /**
+     * 饰品大类，手套、匕首、音乐盒等
+     */
+    type_localized_name: string;
+    /**
+     * 数据更新时间
+     */
+    updated_at: string;
+    /**
+     * yyyp求购数量
+     */
+    yyyp_buy_num: number;
+    /**
+     * yyyp求购价
+     */
+    yyyp_buy_price: number;
+    /**
+     * yyyp平台饰品id
+     */
+    yyyp_id: number;
+    /**
+     * yyyp短租年收益率
+     */
+    yyyp_lease_annual: number;
+    /**
+     * yyyp在租数量
+     */
+    yyyp_lease_num: number;
+    /**
+     * yyyp短租价格
+     */
+    yyyp_lease_price: number;
+    /**
+     * yyyp长租年收益率
+     */
+    yyyp_long_lease_annual: number;
+    /**
+     * yyyp长租价格
+     */
+    yyyp_long_lease_price: number;
+    /**
+     * yyyp在售数量
+     */
+    yyyp_sell_num: number;
+    /**
+     * yyyp在售价
+     */
+    yyyp_sell_price: number;
+    /**
+     * yyyp的steam指导价
+     */
+    yyyp_steam_price: number;
+    /**
+     * yyyp过户底价
+     */
+    yyyp_transfer_price: number;
+    [property: string]: any;
+}
+
+export interface StatisticList {
+    /**
+     * 饰品类型名称
+     */
+    name: string;
+    /**
+     * 存世量
+     */
+    statistic: number;
+    /**
+     * 最近统计日期
+     */
+    statistic_at: string;
+    [property: string]: any;
+}
